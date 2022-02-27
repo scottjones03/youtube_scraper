@@ -1,0 +1,15 @@
+defusedxml==0.7.1
+PySide2==5.15.2
+numpy==1.20.1
+openpyxl==3.0.9
+# Dev stuff
+pandas==1.4.1
+pre-commit==2.11.1
+pylint==2.7.2
+python-youtube==0.8.1
+mypy==0.770
+black==20.8b1
+typing-inspect==0.7.1
+typing_extensions==4.0.1
+youtube-search-python==1.6.2
+qdarkstyle==3.0.3
