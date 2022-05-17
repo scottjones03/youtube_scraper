@@ -33,7 +33,7 @@ def createApplication(
     app.setStyleSheet(styleSheet)
 
     myappid = f"{nameApp.lower()}.{namePublisher.lower()}.gui"
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    #ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
     print(f"Main application PID: {os.getpid()}")
 

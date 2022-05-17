@@ -248,7 +248,7 @@ class YouTubeAPI:
         comments: List[Comment] = [self._get_comment_from_id(comment_id) for comment_id in comment_ids]
         comments_with_text = [comment for comment in comments if comment.snippet.textDisplay]
         if query:
-            seperated_query = query.split(" ")
+            seperated_query = query.lower().split(" ")
             comments_with_query = [comment for comment in comments_with_text if any([_query in comment.snippet.textDisplay for _query in seperated_query])]
             return comments_with_query
         else:
