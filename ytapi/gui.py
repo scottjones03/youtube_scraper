@@ -71,6 +71,14 @@ class MainWindow(MainWindowUi): # type: ignore
 
     def _setEnabled(self, enabled: bool) -> None:
         self.setEnabled(enabled)
+        
+    def _addCommas(self, value: str) -> str:
+        splitValue = ""
+        for i, char in enumerate(value):
+            splitValue+=char
+            if (len(value)-(i+1)) % 3 == 0 and i != len(value)-1:
+                splitValue+=","
+        return splitValue
 
     def getYouTubeAPI(self) -> YouTubeAPI:
         api_key = self.lineEdit_APIKEY.text()
@@ -114,7 +122,7 @@ class MainWindow(MainWindowUi): # type: ignore
                 if colIdx==0:
                     self.tableWidget_videos.insertRow(self.tableWidget_videos.rowCount())
                 item = QTableWidgetItem()
-                item.setData(Qt.DisplayRole, itemData)
+                item.setData(Qt.DisplayRole, self._addCommas(itemData) if itemData.isnumeric() else itemData)
                 self.tableWidget_videos.setItem(rowIdx, colIdx, item)
         labels: Sequence[str] = [label for label in video_dict.keys()]
         self.tableWidget_videos.setHorizontalHeaderLabels(labels)
@@ -143,7 +151,7 @@ class MainWindow(MainWindowUi): # type: ignore
                 if colIdx == 0:
                     self.tableWidget_channel.insertRow(self.tableWidget_channel.rowCount())
                 item = QTableWidgetItem()
-                item.setData(Qt.DisplayRole, itemData)
+                item.setData(Qt.DisplayRole, self._addCommas(itemData) if itemData.isnumeric() else itemData)
                 self.tableWidget_channel.setItem(rowIdx, colIdx, item)
         labels: Sequence[str] = [label for label in channel_dict.keys()]
         self.tableWidget_channel.setHorizontalHeaderLabels(labels)
@@ -167,7 +175,7 @@ class MainWindow(MainWindowUi): # type: ignore
                 if colIdx == 0:
                     self.tableWidget_comments.insertRow(self.tableWidget_comments.rowCount())
                 item = QTableWidgetItem()
-                item.setData(Qt.DisplayRole, itemData)
+                item.setData(Qt.DisplayRole, self._addCommas(itemData) if itemData.isnumeric() else itemData)
                 self.tableWidget_comments.setItem(rowIdx, colIdx, item)
         labels: Sequence[str] = [label for label in comments_dict.keys()]
         self.tableWidget_comments.setHorizontalHeaderLabels(labels)
