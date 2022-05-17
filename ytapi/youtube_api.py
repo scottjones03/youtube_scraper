@@ -7,9 +7,8 @@
 # Authors:
 # - Scott Jones <scott.jones9336@gmail.com>
 # -----------------------------------------------------------------------------------------------------
-from curses import def_shell_mode
 import datetime
-from typing import List, Optional, Tuple, Generator
+from typing import List, Optional, Tuple
 from black import Iterable
 from pyyoutube import Api, Channel, Video, PlaylistItem, Comment
 from youtubesearchpython import ChannelsSearch, VideosSearch, CustomSearch, VideoSortOrder, Comments

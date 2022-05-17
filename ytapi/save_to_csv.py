@@ -7,7 +7,6 @@
 # Authors:
 # - Scott Jones <scott.jones9336@gmail.com>
 # -----------------------------------------------------------------------------------------------------
-from pathlib import Path
 import pandas as pd
 from pyyoutube import Video, Channel, Comment
 from typing import List, Optional, Dict

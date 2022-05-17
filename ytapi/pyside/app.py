@@ -7,7 +7,7 @@
 # Authors:
 # - Scott Jones <scott.jones9336@gmail.com>
 # -----------------------------------------------------------------------------------------------------
-import ctypes
+#import ctypes
 import os
 from typing import List
 import qdarkstyle
