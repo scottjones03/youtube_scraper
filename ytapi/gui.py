@@ -143,7 +143,7 @@ class MainWindow(MainWindowUi): # type: ignore
                 if colIdx==0:
                     self.tableWidget_videos.insertRow(self.tableWidget_videos.rowCount())
                 item = QTableWidgetItem()
-                item.setData(Qt.DisplayRole, self._addCommas(itemData) if str(itemData).isnumeric() else itemData)
+                item.setData(Qt.DisplayRole, self._addCommas(str(itemData)) if str(itemData).isnumeric() else itemData)
                 self.tableWidget_videos.setItem(rowIdx, colIdx, item)
         labels: Sequence[str] = [label for label in video_dict.keys()]
         self.tableWidget_videos.setHorizontalHeaderLabels(labels)
@@ -177,7 +177,7 @@ class MainWindow(MainWindowUi): # type: ignore
                 if colIdx == 0:
                     self.tableWidget_channel.insertRow(self.tableWidget_channel.rowCount())
                 item = QTableWidgetItem()
-                item.setData(Qt.DisplayRole, self._addCommas(itemData) if str(itemData).isnumeric() else itemData)
+                item.setData(Qt.DisplayRole, self._addCommas(str(itemData)) if str(itemData).isnumeric() else itemData)
                 self.tableWidget_channel.setItem(rowIdx, colIdx, item)
         labels: Sequence[str] = [label for label in channel_dict.keys()]
         self.tableWidget_channel.setHorizontalHeaderLabels(labels)
@@ -196,7 +196,7 @@ class MainWindow(MainWindowUi): # type: ignore
         video_id = self.lineEdit_videoID.text()
         keywords = self.lineEdit_keywords.text()
         num_comments = self.spinBox_comments.value()
-        self.searchCommentsRequested(self.apiKey, video_id, keywords, num_comments)
+        self.searchCommentsRequested.emit(self.apiKey, video_id, keywords, num_comments)
 
     @typed_signal.TypedSlot
     def onSearchCommentsResults(self, comments: List[Comment]) -> None:
@@ -209,7 +209,7 @@ class MainWindow(MainWindowUi): # type: ignore
                 if colIdx == 0:
                     self.tableWidget_comments.insertRow(self.tableWidget_comments.rowCount())
                 item = QTableWidgetItem()
-                item.setData(Qt.DisplayRole, self._addCommas(itemData) if str(itemData).isnumeric() else itemData)
+                item.setData(Qt.DisplayRole, self._addCommas(str(itemData)) if str(itemData).isnumeric() else itemData)
                 self.tableWidget_comments.setItem(rowIdx, colIdx, item)
         labels: Sequence[str] = [label for label in comments_dict.keys()]
         self.tableWidget_comments.setHorizontalHeaderLabels(labels)
