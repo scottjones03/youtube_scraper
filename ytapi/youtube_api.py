@@ -7,8 +7,9 @@
 # Authors:
 # - Scott Jones <scott.jones9336@gmail.com>
 # -----------------------------------------------------------------------------------------------------
+from curses import def_shell_mode
 import datetime
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Generator
 from black import Iterable
 from pyyoutube import Api, Channel, Video, PlaylistItem, Comment
 from youtubesearchpython import ChannelsSearch, VideosSearch, CustomSearch, VideoSortOrder, Comments
@@ -20,7 +21,7 @@ class YouTubeAPI:
         self.language: str = language
         self.region: str = region
 
-    def _get_channel_info_by_id(self, channel_id: str) -> Optional[Channel]:
+    def get_channel_info_by_id(self, channel_id: str) -> Optional[Channel]:
         channel_info_list: List[Channel] = self.api.get_channel_info(channel_id=channel_id, hl=f"{self.language}_{self.region}").items
         if len(channel_info_list) == 1:
             channel_info: Channel = channel_info_list[0]
@@ -30,14 +31,17 @@ class YouTubeAPI:
 
     def _get_channels_from_search(self, channel_search: ChannelsSearch, max_channels: int = 100) -> List[Channel]:
         channels: List[Channel] = []
-        search_result = channel_search.result()
+        try:
+            search_result = channel_search.result()
+        except:
+            return []
         if not isinstance(search_result, dict) or "result" not in search_result:
             return channels
         channels_ids_found: Iterable[str] = [channel["id"] for channel in search_result["result"]]
         for channel_id in channels_ids_found:
             if len(channels) == max_channels:
                 break
-            channel_info = self._get_channel_info_by_id(channel_id)
+            channel_info = self.get_channel_info_by_id(channel_id)
             if channel_info:
                 channels.append(channel_info)
         return channels
@@ -76,20 +80,22 @@ class YouTubeAPI:
         channels_sorted: List[Video] = [channel_views["channel"] for channel_views in channels_with_views]
         return channels_sorted   
 
-    def get_small_channels(self, niche: str, num_channels: int = 100, time_delta: int = 14, subscriber_range: Tuple[int, int] = (1000, 200000)) -> List[Channel]:
+    def yield_small_channels(self, niche: str, num_channels: int = 100, time_delta: int = 14, subscriber_range: Tuple[int, int] = (1000, 200000)) -> Iterable[List[Channel]]:
         channel_search = ChannelsSearch(query=niche, language=self.language, region=self.region)
         channels: List[Channel] = []
-        while len(channels) < num_channels*2:
+        while len(channels) < num_channels:
             channels_found = self._get_channels_from_search(channel_search, num_channels)
             if not channels_found:
-                return channels
-            filtered_channels_by_subs = self._filter_subscribers(channels_found, subscriber_range)
-            if not filtered_channels_by_subs:
-                return channels
-            channels = [*channels, *filtered_channels_by_subs]
-            channel_search.next()
-        active_channels = self._filter_by_activity(channels_found, time_delta=time_delta)
-        return active_channels
+                break
+            filtered_channels = self._filter_by_activity(self._filter_subscribers(channels_found, subscriber_range), time_delta=time_delta)
+            for channel in filtered_channels:
+                channels.append(channel)
+            try:
+                channel_search.next()
+            except:
+                break
+            yield channels
+        yield channels
 
     def _get_uploads(self, channel_info: Channel) -> List[Video]:
         uploads_id = channel_info.contentDetails.relatedPlaylists.uploads
@@ -123,6 +129,35 @@ class YouTubeAPI:
         minimum_time = datetime.datetime.now(video_time.tzinfo) - datetime.timedelta(days=time_delta)
         return bool(video_time > minimum_time)
 
+    @staticmethod
+    def getDuration(duration: str) -> float:
+        d=duration.replace("P", "").replace("T", "")
+        dhoursInMins=0
+        dMins=0
+        dSecondsInMins=0.0
+        for key in ("Y","D","H","M", "S"):
+            if key in d and (key=="Y" or key=="D"):
+                d=d.split(key)[1]
+            elif key in d and (key=="H"):
+                dhoursInMins=60*int(d.split(key)[0])
+                d=d.split(key)[1]
+            elif key in d and (key=="M"):
+                dMins=int(d.split(key)[0])
+                d=d.split(key)[1]
+            elif key in d and (key=="S"):
+                dSecondsInMins=int(d.split(key)[0])/60
+        return round(float(dMins+dhoursInMins+dSecondsInMins), 2)
+
+    
+    def _isShort(self, video: Video, time: int = 4) -> bool:
+        """
+        Time Delta is in days.
+        """
+        dur=self.getDuration(video.contentDetails.duration)
+        if dur==0:
+            return False
+        return bool(dur < time)
+
     def _isOldVideo(self, video: Video, time_delta: int) -> bool:
         """
         Time Delta is in years.
@@ -139,7 +174,7 @@ class YouTubeAPI:
         channel_id = video.snippet.channelId
         if not views or not channel_id:
             return False, 0.0
-        channel = self._get_channel_info_by_id(channel_id=channel_id)
+        channel = self.get_channel_info_by_id(channel_id=channel_id)
         if not channel:
             return False, 0.0
         subscribers = channel.statistics.subscriberCount
@@ -161,67 +196,112 @@ class YouTubeAPI:
         else:
             return None
 
-    def _get_videos_from_search(self, video_search: CustomSearch, language: str, region: str, max_videos: int = 100) -> List[Video]:
+    def _get_videos_from_search(self, video_search: CustomSearch, language: str, region: str) -> List[Video]:
         videos: List[Video] = []
-        search_result = video_search.result()
+        try:
+            search_result = video_search.result()
+        except:
+            return []
         if not isinstance(search_result, dict) or "result" not in search_result:
             return videos
         video_ids_found: Iterable[str] = [video["id"] for video in search_result["result"]]
         for video_id in video_ids_found:
-            if len(videos) == max_videos:
-                break
             video_info = self._get_video_info_by_id(video_id=video_id, language=language, region=region)
             if video_info:
                 videos.append(video_info)
         return videos
 
-    def get_most_viewed_videos(self, niche: str, language: str, region: str, num_videos: int = 100, time_delta: int = 14) -> List[Video]:
-        video_search = CustomSearch(query=niche, language=language, region=region)
+    def _set_language_region(self, language: str, region: str) -> None:
+        self.language=language
+        self.region=region
+
+    def yield_most_viewed_videos(self, niche: str, num_videos: int, language: str, region: str, time_delta: int = 14) -> Iterable[List[Video]]:
+        self._set_language_region(language, region)
+        video_search = CustomSearch(query=niche, searchPreferences=VideoSortOrder.uploadDate, language=language, region=region)
         videos: List[Video] = []
         while len(videos) < num_videos**20:
-            videos_found = self._get_videos_from_search(video_search, language, region, max_videos=num_videos)
-            recent_videos = [video for video in videos_found if self._isRecent(video, time_delta)]
-            if not recent_videos or not videos_found:
+            videos_found = self._get_videos_from_search(video_search, language, region)
+            for video in videos_found:
+                if not self._isRecent(video, time_delta):
+                    videos_found.remove(video)
+            if not videos_found:
                 break
-            videos = [*videos, *recent_videos]
-            video_search.next()
+            for video in videos_found:
+                videos.append(video)
+            try:
+                video_search.next()
+            except:
+                break
+            yield sorted(videos, key= lambda x: int(x.statistics.viewCount), reverse=True)[0: min(len(videos), num_videos)]
         if videos:
             most_viewed_videos = sorted(videos, key= lambda x: int(x.statistics.viewCount), reverse=True)[0: min(len(videos), num_videos)]
-            return most_viewed_videos
-        else:
-            return videos
+            yield most_viewed_videos
 
-    def get_pushed_videos(self, niche: str, num_videos: int = 100, time_delta: int = 14) -> List[Video]:
-        video_search = CustomSearch(query=niche, searchPreferences=VideoSortOrder.uploadDate)
+    def yield_small_videos(self, niche: str, language: str, region: str, num_videos: int = 100, time_delta: int = 14) -> Iterable[List[Video]]:
+        self._set_language_region(language, region)
+        video_search = CustomSearch(query=niche, searchPreferences=VideoSortOrder.uploadDate, language=language, region=region)
+        videos: List[Video] = []
+        while len(videos) < num_videos**20:
+            videos_found = self._get_videos_from_search(video_search, language, region)
+            for video in videos_found:
+                if not self._isRecent(video, time_delta):
+                    videos_found.remove(video)
+            if not videos_found:
+                break
+            for video in videos_found:
+                if self._isShort(video):
+                    videos.append(video)
+            try:
+                video_search.next()
+            except:
+                break
+            yield sorted(videos, key= lambda x: int(x.statistics.viewCount), reverse=True)[0: min(len(videos), num_videos)]
+        if videos:
+            small_videos_by_views = sorted(videos, key= lambda x: int(x.statistics.viewCount), reverse=True)[0: min(len(videos), num_videos)]
+            yield small_videos_by_views
+
+    def yield_pushed_videos(self, niche: str, language: str, region: str, num_videos: int = 100, time_delta: int = 14) -> Iterable[List[Video]]:
+        self._set_language_region(language, region)
+        video_search = CustomSearch(query=niche, searchPreferences=VideoSortOrder.uploadDate, language=language, region=region)
         videos_with_score: List[dict] = []
         while len(videos_with_score) < num_videos:
-            videos_found = self._get_videos_from_search(video_search, language=self.language, region=self.region, max_videos=num_videos)
-            recent_videos = [video for video in videos_found if self._isRecent(video, time_delta)]
-            if not recent_videos or not videos_found:
+            videos_found = self._get_videos_from_search(video_search, language=self.language, region=self.region)
+            for video in videos_found:
+                if not self._isRecent(video, time_delta):
+                    videos_found.remove(video)
+            if not videos_found:
                 break
-            for video in recent_videos:
+            for video in videos_found:
                 isPushed, score = self._isPushed(video)
                 if isPushed:
                     videos_with_score.append({"video": video, "score": score})
-            video_search.next()
+            try:
+                video_search.next()
+            except:
+                break
+            yield [video_dict["video"] for video_dict in sorted(videos_with_score, key= lambda x: x["score"], reverse=True)[0: min(len(videos_with_score), num_videos)]]
         if videos_with_score:
             sorted_by_score: List[dict] = sorted(videos_with_score, key= lambda x: x["score"], reverse=True)[0: min(len(videos_with_score), num_videos)]
             most_pushed_videos = [video_dict["video"] for video_dict in sorted_by_score]
-            return most_pushed_videos
-        else:
-            return []
+            yield most_pushed_videos
 
-    def get_old_videos(self, niche: str, num_videos: int = 100, time_delta: int = 2) -> List[Video]:
-        video_search = VideosSearch(query=niche)
+    def yield_old_videos(self, niche: str, language: str, region: str, num_videos: int = 100, time_delta: int = 2) -> Iterable[List[Video]]:
+        self._set_language_region(language, region)
+        video_search = VideosSearch(query=niche, language=language, region=region)
         videos: List[Video] = []
         while len(videos) < num_videos:
             videos_found = self._get_videos_from_search(video_search, language=self.language, region=self.region, max_videos=num_videos)
             if not videos_found:
                 break
-            old_videos = [video for video in videos_found if self._isOldVideo(video, time_delta)]
-            videos = [*videos, *old_videos]
-            video_search.next()
-        return videos
+            for video in videos_found:
+                if self._isOldVideo(video, time_delta):
+                    videos.append(video)
+            try:
+                video_search.next()
+            except:
+                break
+            yield videos
+        yield videos
 
     def _get_comment_from_id(self, comment_id: str) -> Optional[Comment]:
         comment_info_list: List[Comment] = self.api.get_comment_by_id(comment_id=comment_id).items
@@ -231,12 +311,21 @@ class YouTubeAPI:
         else:
             return None
 
-    def get_comments(self, video_id: str, query: Optional[str] = None, num_comments: int = 100) -> List[Comment]:
+    def yield_comments(self, video_id: str, query: Optional[str] = None, num_comments: int = 100) -> Iterable[List[Comment]]:
         comment_search = Comments(video_id)
         while comment_search.hasMoreComments:
             try:
                 comment_search.getNextComments()
                 comment_result = comment_search.comments
+                comment_ids = [comment["id"] for comment in comment_result["result"]]
+                comments: List[Comment] = [self._get_comment_from_id(comment_id) for comment_id in comment_ids]
+                if query:
+                    seperated_query = query.lower().split(" ")
+                    comments_with_query = [comment for comment in comments if comment.snippet.textDisplay and any([_query in comment.snippet.textDisplay.lower() for _query in seperated_query])]
+                    yield comments_with_query
+                else:
+                    comments_with_text = [comment for comment in comments if comment.snippet.textDisplay]
+                    yield comments_with_text
                 if not isinstance(comment_result, dict) or "result" not in comment_result:
                     return []
                 elif len(comment_result["result"]) > num_comments:
@@ -244,15 +333,7 @@ class YouTubeAPI:
             except TypeError as err:
                 print(err)
                 break
-        comment_ids = [comment["id"] for comment in comment_result["result"]]
-        comments: List[Comment] = [self._get_comment_from_id(comment_id) for comment_id in comment_ids]
-        comments_with_text = [comment for comment in comments if comment.snippet.textDisplay]
-        if query:
-            seperated_query = query.lower().split(" ")
-            comments_with_query = [comment for comment in comments_with_text if any([_query in comment.snippet.textDisplay for _query in seperated_query])]
-            return comments_with_query
-        else:
-            return comments_with_text
+        
         
 
 

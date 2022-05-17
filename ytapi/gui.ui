@@ -127,6 +127,11 @@
             </item>
             <item>
              <property name="text">
+              <string>Less than 4</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
               <string>Recycled</string>
              </property>
             </item>

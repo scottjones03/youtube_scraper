@@ -29,7 +29,7 @@
 from pathlib import Path
 from typing import Dict, Optional, Type, TYPE_CHECKING
 
-from PySide2 import QtCore, QtUiTools, QtWidgets
+from PySide6 import QtCore, QtUiTools, QtWidgets
 
 
 class UiLoader(QtUiTools.QUiLoader):

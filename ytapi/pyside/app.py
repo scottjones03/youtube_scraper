@@ -11,7 +11,7 @@ import ctypes
 import os
 from typing import List
 import qdarkstyle
-from PySide2 import QtWidgets, QtCore
+from PySide6 import QtWidgets, QtCore
 
 def createApplication(
     argv: List[str],

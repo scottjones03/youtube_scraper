@@ -9,7 +9,6 @@
             "type": "python",
             "request": "launch",
             "module": "ytapi",
-            "preLaunchTask": "ui2py"
         }
     ]
 }

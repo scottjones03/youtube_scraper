@@ -13,36 +13,56 @@ from pyyoutube import Video, Channel, Comment
 from typing import List, Optional, Dict
 
 from ytapi.explorer_app import ExplorerApp
+from ytapi.youtube_api import YouTubeAPI
 
 class StoredYoutubeData:
     def __init__(self) -> None:
         ...
 
-    def get_videos_dict(self, videos: List[Video]) -> Dict[str, list]:
+    def get_videos_dict(self, videos: List[Video], channels: List[Optional[Channel]]) -> Dict[str, list]:
         video_ids: List[str] = []
         video_titles: List[str] = []
-        channel_ids_titles: List[str] = []
+        channel_ids: List[str] = []
+        channel_titles: List[str] = []
+        channel_subs: List[Optional[int]] = []
+        channel_country: List[Optional[str]] = []
+        channel_num_videos: List[Optional[int]] = []
         published_ats: List[Optional[str]] = []
         view_counts: List[Optional[int]] = []
         like_counts: List[Optional[int]] = []
         comment_counts: List[Optional[int]] = []
-        for video in videos:
+        duration: List[float] = []
+        for video, channel in zip(videos, channels):
             video_ids.append(video.id)
             video_titles.append(video.snippet.title)
-            channel_id_title = f"{video.snippet.channelTitle}:{video.snippet.channelId}"
-            channel_ids_titles.append(channel_id_title)
+            channel_titles.append(video.snippet.channelTitle)
+            channel_ids.append(video.snippet.channelId)
             published_ats.append(video.snippet.publishedAt)
             view_counts.append(video.statistics.viewCount)
             like_counts.append(video.statistics.likeCount)
             comment_counts.append(video.statistics.commentCount)
+            duration.append(YouTubeAPI.getDuration(video.contentDetails.duration))
+            if channel:
+                channel_subs.append(channel.statistics.subscriberCount)
+                channel_country.append(channel.snippet.country)
+                channel_num_videos.append(channel.statistics.videoCount)
+            else:
+                channel_subs.append(None)   
+                channel_country.append(None)
+                channel_num_videos.append(None)
         video_dict: Dict[str, list] = {
             "Video ID": video_ids,
             "Video Title": video_titles,
+            "Duration": duration,
             "Upload date": published_ats,
             "Views": view_counts,
             "Likes": like_counts,
             "Number of Comments": comment_counts,
-            "Channel ID: Name": channel_ids_titles,
+            "Channel ID": channel_ids,
+            "Channel Name": channel_titles,
+            "Channel Subs": channel_subs,
+            "Channel Country": channel_country,
+            "Channel Video Count": channel_num_videos,
         }
         return video_dict
 

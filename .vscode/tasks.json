@@ -6,7 +6,7 @@
         {
             "label": "ui2py",
             "type": "shell",
-            "command": "${workspaceFolder}\\ui2py.ps1"
+            "command": "${workspaceFolder}\\ui2py.py"
         }
     ]
 }

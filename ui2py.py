@@ -7,7 +7,7 @@ for uipath in pathlib.Path().glob('ytapi/**/*.ui'):
         print('Up-to-date:', uipath, pypath)
     else:
         print('Converting:', uipath, pypath)
-        subprocess.run(['pyside2-uic', uipath, '-o', pypath])
+        subprocess.run(['pyside6-uic', uipath, '-o', pypath])
         data = pypath.read_text()
         data = '# pylint: disable=all\n' + data
         pypath.write_text(data)

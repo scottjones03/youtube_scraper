@@ -9,7 +9,7 @@
 # -----------------------------------------------------------------------------------------------------
 from pathlib import Path
 from typing import List, Optional
-from PySide2 import QtCore, QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 
 LAST_DIRECTORY_SETTINGS_KEY = "last_directory"

@@ -42,7 +42,7 @@ from typing import (
     Union,
 )
 
-from PySide2 import QtCore
+from PySide6 import QtCore
 
 FuncT = TypeVar("FuncT", bound=Callable)
 

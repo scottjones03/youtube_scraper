@@ -9,18 +9,28 @@
 # -----------------------------------------------------------------------------------------------------
 from pathlib import Path
 from typing import Optional, Sequence, List
-from PySide2 import QtWidgets, QtCore
-from PySide2.QtCore import Qt
-from PySide2.QtWidgets import QComboBox, QPushButton, QTableWidget, QLineEdit, QSpinBox, QTableWidgetItem
+from PySide6 import QtCore
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QComboBox, QPushButton, QTableWidget, QLineEdit, QSpinBox, QTableWidgetItem
 from ytapi.pyside import makeUiClass, typed_signal
-from ytapi.youtube_api import YouTubeAPI
 from ytapi.save_to_csv import StoredYoutubeData
-from pyyoutube import Api, Channel, Video, PlaylistItem, Comment
+from pyyoutube import Channel, Video, Comment
 # Define classes from ui templates
 UI_DIR = Path(__file__).resolve().parent
 MainWindowUi = makeUiClass(UI_DIR / "gui.ui")
 
 class MainWindow(MainWindowUi): # type: ignore
+    @typed_signal.TypedSignal
+    def searchVideosRequested(self, key: str, searchType: str, niche: str, num_videos: int, time_delta: int, language: str, region: str):
+        ...
+    
+    @typed_signal.TypedSignal
+    def searchChannelRequested(self, key: str, searchType: str, niche: str, num_channels: int, time_delta: int, min_subs: int, max_subs: int):
+        ...
+
+    @typed_signal.TypedSignal
+    def searchCommentsRequested(self, key: str, video_id: str, keywords: str, num_comments: int):
+        ...
 
     lineEdit_APIKEY: "QLineEdit"
     comboBox_searchTypeVideo: "QComboBox"
@@ -52,7 +62,16 @@ class MainWindow(MainWindowUi): # type: ignore
         self.setupUi(self)
         self._connectSignals()
         self._setEnabled(True)
-        self.lineEdit_APIKEY.setFocus()
+
+        settings=QtCore.QSettings()
+        self.apiKey: str=settings.value("apiKey", "")
+        if len(self.apiKey)>0:
+            self.pushButton_searchChannel.setEnabled(True)
+            self.pushButton_searchComments.setEnabled(True)
+            self.pushButton_searchVideos.setEnabled(True)
+            self.lineEdit_APIKEY.setText(self.apiKey)
+        else:
+            self.lineEdit_APIKEY.setFocus()
 
         self.currentVideos: List[Video] = []
         self.currentChannels: List[Channel] = []
@@ -69,6 +88,7 @@ class MainWindow(MainWindowUi): # type: ignore
         self.lineEdit_APIKEY.textChanged.connect(self.onAPIKeyChanged)
 
 
+
     def _setEnabled(self, enabled: bool) -> None:
         self.setEnabled(enabled)
         
@@ -80,15 +100,14 @@ class MainWindow(MainWindowUi): # type: ignore
                 splitValue+=","
         return splitValue
 
-    def getYouTubeAPI(self) -> YouTubeAPI:
-        api_key = self.lineEdit_APIKEY.text()
-        return YouTubeAPI(api_key)
-
     @typed_signal.TypedSlot
     def onAPIKeyChanged(self) -> None:
         self.pushButton_searchChannel.setEnabled(True)
         self.pushButton_searchComments.setEnabled(True)
         self.pushButton_searchVideos.setEnabled(True)
+        self.apiKey=self.lineEdit_APIKEY.text()
+        settings=QtCore.QSettings()
+        settings.setValue("apiKey", self.apiKey)
 
     @typed_signal.TypedSlot
     def onVideoSearchTypeChanged(self) -> None:
@@ -98,23 +117,25 @@ class MainWindow(MainWindowUi): # type: ignore
             self.label_7.setText("Years:")
         elif self.comboBox_searchTypeVideo.currentText() == "Most Pushed":
             self.label_7.setText("Days:")
+        elif self.comboBox_searchTypeVideo.currentText() == "Less than 4":
+            self.label_7.setText("Days:")
 
     @typed_signal.TypedSlot
     def onSearchVideos(self) -> None:
-        self._setEnabled(False)
+        self.pushButton_searchVideos.setEnabled(False)
+        self.pushButton_searchVideos.setText("loading...")
         niche = self.lineEdit_nicheVideo.text()
         num_videos = self.spinBox_numVideos.value()
         time_delta = self.spinBox_timeDeltaVideos.value()
         language, region = self.lineEdit_languageRegion.text().split("/")
-        self._setEnabled(True)
-        api=self.getYouTubeAPI()
-        if self.comboBox_searchTypeVideo.currentText() == "Most Viewed":
-            self.currentVideos=api.get_most_viewed_videos(niche=niche, language=language, region=region, num_videos=num_videos, time_delta=time_delta)
-        elif self.comboBox_searchTypeVideo.currentText() == "Recycled":
-            self.currentVideos=api.get_old_videos(niche=niche, num_videos=num_videos, time_delta=time_delta)
-        elif self.comboBox_searchTypeVideo.currentText() == "Most Pushed":
-            self.currentVideos=api.get_pushed_videos(niche=niche, num_videos=num_videos, time_delta=time_delta)
-        video_dict = StoredYoutubeData().get_videos_dict(self.currentVideos)
+        searchType = self.comboBox_searchTypeVideo.currentText()
+        self.searchVideosRequested.emit(self.apiKey, searchType, niche, num_videos, time_delta, language, region)
+
+
+    @typed_signal.TypedSlot
+    def onSearchVideosResults(self, videos: List[Video], channels: List[Channel]) -> None:
+        self.currentVideos=videos
+        video_dict = StoredYoutubeData().get_videos_dict(self.currentVideos, channels)
         self.tableWidget_videos.clear()
         for colIdx, (columnName, columnData) in enumerate(video_dict.items()):
             self.tableWidget_videos.insertColumn(self.tableWidget_videos.columnCount())
@@ -122,27 +143,32 @@ class MainWindow(MainWindowUi): # type: ignore
                 if colIdx==0:
                     self.tableWidget_videos.insertRow(self.tableWidget_videos.rowCount())
                 item = QTableWidgetItem()
-                item.setData(Qt.DisplayRole, self._addCommas(itemData) if itemData.isnumeric() else itemData)
+                item.setData(Qt.DisplayRole, self._addCommas(itemData) if str(itemData).isnumeric() else itemData)
                 self.tableWidget_videos.setItem(rowIdx, colIdx, item)
         labels: Sequence[str] = [label for label in video_dict.keys()]
         self.tableWidget_videos.setHorizontalHeaderLabels(labels)
         self.pushButton_exportVideos.setEnabled(True)
+
+    @typed_signal.TypedSlot
+    def onSearchVideosComplete(self) -> None:
+        self.pushButton_searchVideos.setText("search")
+        self.pushButton_searchVideos.setEnabled(True)
             
 
     @typed_signal.TypedSlot
     def onSearchChannel(self) -> None:
-        self._setEnabled(False)
+        self.pushButton_searchChannel.setText("loading...")
+        self.pushButton_searchChannel.setEnabled(False)
         niche = self.lineEdit_nicheChannel.text()
         num_channels = self.spinBox_numChannels.value()
         min_subs, max_subs = self.spinBox_minSubs.value(), self.spinBox_maxSubs.value()
         time_delta = self.spinBox_timeDeltaChannel.value()
-        self._setEnabled(True)
-        api=self.getYouTubeAPI()
-        self.currentChannels=api.get_small_channels(niche=niche, num_channels=num_channels, time_delta=time_delta, subscriber_range=(min_subs, max_subs))
-        if self.comboBox_sortTypeChannel.currentText() == "Sort by Subs":
-            self.currentChannels=api.sort_by_subscribers(self.currentChannels)
-        elif self.comboBox_sortTypeChannel.currentText() == "Sort by Views":
-            self.currentChannels=api.sort_by_recent_views(self.currentChannels, time_delta)
+        searchType = self.comboBox_sortTypeChannel.currentText() 
+        self.searchChannelRequested.emit(self.apiKey, searchType, niche, num_channels, time_delta, min_subs, max_subs)
+
+    @typed_signal.TypedSlot
+    def onSearchChannelResults(self, channels: List[Channel]) -> None:
+        self.currentChannels=channels
         channel_dict = StoredYoutubeData().get_channels_dict(self.currentChannels)
         self.tableWidget_channel.clear()
         for colIdx, (columnName, columnData) in enumerate(channel_dict.items()):
@@ -151,22 +177,30 @@ class MainWindow(MainWindowUi): # type: ignore
                 if colIdx == 0:
                     self.tableWidget_channel.insertRow(self.tableWidget_channel.rowCount())
                 item = QTableWidgetItem()
-                item.setData(Qt.DisplayRole, self._addCommas(itemData) if itemData.isnumeric() else itemData)
+                item.setData(Qt.DisplayRole, self._addCommas(itemData) if str(itemData).isnumeric() else itemData)
                 self.tableWidget_channel.setItem(rowIdx, colIdx, item)
         labels: Sequence[str] = [label for label in channel_dict.keys()]
         self.tableWidget_channel.setHorizontalHeaderLabels(labels)
         self.pushButton_exportChannel.setEnabled(True)
 
+    @typed_signal.TypedSlot
+    def onSearchChannelComplete(self) -> None:
+        self.pushButton_searchChannel.setText("search")
+        self.pushButton_searchChannel.setEnabled(True)
+
     
     @typed_signal.TypedSlot
     def onSearchComments(self) -> None:
-        self._setEnabled(False)
+        self.pushButton_searchComments.setText("loading...")
+        self.pushButton_searchComments.setEnabled(False)
         video_id = self.lineEdit_videoID.text()
         keywords = self.lineEdit_keywords.text()
         num_comments = self.spinBox_comments.value()
-        self._setEnabled(True)
-        api=self.getYouTubeAPI()
-        self.currentComments=api.get_comments(video_id, keywords, num_comments)
+        self.searchCommentsRequested(self.apiKey, video_id, keywords, num_comments)
+
+    @typed_signal.TypedSlot
+    def onSearchCommentsResults(self, comments: List[Comment]) -> None:
+        self.currentComments=comments
         comments_dict = StoredYoutubeData().get_comments_dict(self.currentComments)
         self.tableWidget_comments.clear()
         for colIdx, (columnName, columnData) in enumerate(comments_dict.items()):
@@ -175,11 +209,16 @@ class MainWindow(MainWindowUi): # type: ignore
                 if colIdx == 0:
                     self.tableWidget_comments.insertRow(self.tableWidget_comments.rowCount())
                 item = QTableWidgetItem()
-                item.setData(Qt.DisplayRole, self._addCommas(itemData) if itemData.isnumeric() else itemData)
+                item.setData(Qt.DisplayRole, self._addCommas(itemData) if str(itemData).isnumeric() else itemData)
                 self.tableWidget_comments.setItem(rowIdx, colIdx, item)
         labels: Sequence[str] = [label for label in comments_dict.keys()]
         self.tableWidget_comments.setHorizontalHeaderLabels(labels)
         self.pushButton_exportComments.setEnabled(True)
+    
+    @typed_signal.TypedSlot
+    def onSearchCommentsComplete(self) -> None:
+        self.pushButton_searchComments.setText("search")
+        self.pushButton_searchComments.setEnabled(True)
 
     @typed_signal.TypedSlot
     def onExportVideos(self) -> None:
