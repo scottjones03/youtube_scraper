@@ -176,9 +176,9 @@ class YouTubeAPI:
         return videos
 
     def get_most_viewed_videos(self, niche: str, language: str, region: str, num_videos: int = 100, time_delta: int = 14) -> List[Video]:
-        video_search = CustomSearch(query=niche, searchPreferences=VideoSortOrder.uploadDate)
+        video_search = CustomSearch(query=niche, language=language, region=region)
         videos: List[Video] = []
-        while len(videos) < num_videos**2:
+        while len(videos) < num_videos**20:
             videos_found = self._get_videos_from_search(video_search, language, region, max_videos=num_videos)
             recent_videos = [video for video in videos_found if self._isRecent(video, time_delta)]
             if not recent_videos or not videos_found:
