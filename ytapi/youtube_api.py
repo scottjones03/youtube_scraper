@@ -136,7 +136,7 @@ class YouTubeAPI:
         d=duration.replace("P", "").replace("T", "")
         dhoursInMins=0
         dMins=0
-        dSecondsInMins=0.0
+        dSecondsInMins=-1e-3
         for key in ("Y","D","H","M", "S"):
             if key in d and (key=="Y" or key=="D"):
                 d=d.split(key)[1]
@@ -148,7 +148,7 @@ class YouTubeAPI:
                 d=d.split(key)[1]
             elif key in d and (key=="S"):
                 dSecondsInMins=int(d.split(key)[0])/60
-        return round(float(dMins+dhoursInMins+dSecondsInMins), 2)
+        return round(float(dMins+dhoursInMins+dSecondsInMins), 3)
 
     
     def _isShort(self, video: Video, time: int = 4) -> bool:
@@ -156,9 +156,9 @@ class YouTubeAPI:
         Time Delta is in days.
         """
         dur=self.getDuration(video.contentDetails.duration)
-        if dur==0:
+        if dur==-1e-3:
             return False
-        return bool(dur < time)
+        return bool(dur <= time)
 
     def _isOldVideo(self, video: Video, time_delta: int) -> bool:
         """
@@ -224,13 +224,13 @@ class YouTubeAPI:
         video_search = CustomSearch(query=niche, searchPreferences=VideoSortOrder.uploadDate, language=language, region=region)
         videos: List[Video] = []
         notRecent=False
-        while len(videos) < num_videos**20:
+        while len(videos) < num_videos**20 and not notRecent:
             videos_found = self._get_videos_from_search(video_search, language, region)
             for video in videos_found:
                 if not self._isRecent(video, time_delta):
                     videos_found.remove(video)
                     notRecent=True
-            if not videos_found or notRecent:
+            if not videos_found:
                 break
             for video in videos_found:
                 videos.append(video)
@@ -248,13 +248,13 @@ class YouTubeAPI:
         video_search = CustomSearch(query=niche, searchPreferences=VideoSortOrder.uploadDate, language=language, region=region)
         videos: List[Video] = []
         notRecent=False
-        while len(videos) < num_videos**20:
+        while len(videos) < num_videos**20 and not notRecent:
             videos_found = self._get_videos_from_search(video_search, language, region)
             for video in videos_found:
                 if not self._isRecent(video, time_delta):
                     videos_found.remove(video)
                     notRecent=True
-            if not videos_found or notRecent:
+            if not videos_found:
                 break
             for video in videos_found:
                 if self._isShort(video):
@@ -273,13 +273,13 @@ class YouTubeAPI:
         video_search = CustomSearch(query=niche, searchPreferences=VideoSortOrder.uploadDate, language=language, region=region)
         videos_with_score: List[dict] = []
         notRecent=False
-        while len(videos_with_score) < num_videos:
+        while len(videos_with_score) < num_videos and not notRecent:
             videos_found = self._get_videos_from_search(video_search, language=self.language, region=self.region)
             for video in videos_found:
                 if not self._isRecent(video, time_delta):
                     videos_found.remove(video)
                     notRecent=True
-            if not videos_found or notRecent:
+            if not videos_found:
                 break
             for video in videos_found:
                 isPushed, score = self._isPushed(video)
