@@ -223,12 +223,14 @@ class YouTubeAPI:
         self._set_language_region(language, region)
         video_search = CustomSearch(query=niche, searchPreferences=VideoSortOrder.uploadDate, language=language, region=region)
         videos: List[Video] = []
+        notRecent=False
         while len(videos) < num_videos**20:
             videos_found = self._get_videos_from_search(video_search, language, region)
             for video in videos_found:
                 if not self._isRecent(video, time_delta):
                     videos_found.remove(video)
-            if not videos_found:
+                    notRecent=True
+            if not videos_found or notRecent:
                 break
             for video in videos_found:
                 videos.append(video)
@@ -245,12 +247,14 @@ class YouTubeAPI:
         self._set_language_region(language, region)
         video_search = CustomSearch(query=niche, searchPreferences=VideoSortOrder.uploadDate, language=language, region=region)
         videos: List[Video] = []
+        notRecent=False
         while len(videos) < num_videos**20:
             videos_found = self._get_videos_from_search(video_search, language, region)
             for video in videos_found:
                 if not self._isRecent(video, time_delta):
                     videos_found.remove(video)
-            if not videos_found:
+                    notRecent=True
+            if not videos_found or notRecent:
                 break
             for video in videos_found:
                 if self._isShort(video):
@@ -268,12 +272,14 @@ class YouTubeAPI:
         self._set_language_region(language, region)
         video_search = CustomSearch(query=niche, searchPreferences=VideoSortOrder.uploadDate, language=language, region=region)
         videos_with_score: List[dict] = []
+        notRecent=False
         while len(videos_with_score) < num_videos:
             videos_found = self._get_videos_from_search(video_search, language=self.language, region=self.region)
             for video in videos_found:
                 if not self._isRecent(video, time_delta):
                     videos_found.remove(video)
-            if not videos_found:
+                    notRecent=True
+            if not videos_found or notRecent:
                 break
             for video in videos_found:
                 isPushed, score = self._isPushed(video)
