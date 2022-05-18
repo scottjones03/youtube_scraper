@@ -123,6 +123,7 @@ class MainWindow(MainWindowUi): # type: ignore
     @typed_signal.TypedSlot
     def onSearchVideos(self) -> None:
         self.pushButton_searchVideos.setEnabled(False)
+        self.pushButton_exportVideos.setEnabled(False)
         self.pushButton_searchVideos.setText("loading...")
         niche = self.lineEdit_nicheVideo.text()
         num_videos = self.spinBox_numVideos.value()
@@ -147,18 +148,19 @@ class MainWindow(MainWindowUi): # type: ignore
                 self.tableWidget_videos.setItem(rowIdx, colIdx, item)
         labels: Sequence[str] = [label for label in video_dict.keys()]
         self.tableWidget_videos.setHorizontalHeaderLabels(labels)
-        self.pushButton_exportVideos.setEnabled(True)
 
     @typed_signal.TypedSlot
     def onSearchVideosComplete(self) -> None:
         self.pushButton_searchVideos.setText("search")
         self.pushButton_searchVideos.setEnabled(True)
+        self.pushButton_exportVideos.setEnabled(True)
             
 
     @typed_signal.TypedSlot
     def onSearchChannel(self) -> None:
         self.pushButton_searchChannel.setText("loading...")
         self.pushButton_searchChannel.setEnabled(False)
+        self.pushButton_exportChannel.setEnabled(False)
         niche = self.lineEdit_nicheChannel.text()
         num_channels = self.spinBox_numChannels.value()
         min_subs, max_subs = self.spinBox_minSubs.value(), self.spinBox_maxSubs.value()
@@ -181,18 +183,20 @@ class MainWindow(MainWindowUi): # type: ignore
                 self.tableWidget_channel.setItem(rowIdx, colIdx, item)
         labels: Sequence[str] = [label for label in channel_dict.keys()]
         self.tableWidget_channel.setHorizontalHeaderLabels(labels)
-        self.pushButton_exportChannel.setEnabled(True)
+        
 
     @typed_signal.TypedSlot
     def onSearchChannelComplete(self) -> None:
         self.pushButton_searchChannel.setText("search")
         self.pushButton_searchChannel.setEnabled(True)
+        self.pushButton_exportChannel.setEnabled(True)
 
     
     @typed_signal.TypedSlot
     def onSearchComments(self) -> None:
         self.pushButton_searchComments.setText("loading...")
         self.pushButton_searchComments.setEnabled(False)
+        self.pushButton_exportComments.setEnabled(False)
         video_id = self.lineEdit_videoID.text()
         keywords = self.lineEdit_keywords.text()
         num_comments = self.spinBox_comments.value()
@@ -213,16 +217,16 @@ class MainWindow(MainWindowUi): # type: ignore
                 self.tableWidget_comments.setItem(rowIdx, colIdx, item)
         labels: Sequence[str] = [label for label in comments_dict.keys()]
         self.tableWidget_comments.setHorizontalHeaderLabels(labels)
-        self.pushButton_exportComments.setEnabled(True)
     
     @typed_signal.TypedSlot
     def onSearchCommentsComplete(self) -> None:
         self.pushButton_searchComments.setText("search")
         self.pushButton_searchComments.setEnabled(True)
+        self.pushButton_exportComments.setEnabled(True)
 
     @typed_signal.TypedSlot
     def onExportVideos(self) -> None:
-        StoredYoutubeData().save_videos_to_file(self.currentVideos)
+        StoredYoutubeData().save_videos_to_file(self.currentVideos, self.currentChannels)
     
     @typed_signal.TypedSlot
     def onExportChannel(self) -> None:

@@ -65,8 +65,8 @@ class StoredYoutubeData:
         }
         return video_dict
 
-    def save_videos_to_file(self, videos: List[Video]) -> None:
-        video_dict=self.get_videos_dict(videos)
+    def save_videos_to_file(self, videos: List[Video], channels: List[Channel]) -> None:
+        video_dict=self.get_videos_dict(videos, channels)
         video_dataframe = pd.DataFrame(video_dict)
         path = ExplorerApp().saveFilePathDialog(
             nameFilter="CSV Files (*.csv);; Excel Files (*.xlsx)",

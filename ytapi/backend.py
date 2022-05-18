@@ -61,8 +61,6 @@ class Backend(QtCore.QObject):
         for videos in videos_gen:
             channels=[api.get_channel_info_by_id(video.snippet.channelId) for video in videos]
             self.searchVideosResults.emit(videos, channels)
-            if len(videos)>=num_videos:
-                break
         self.searchVideosComplete.emit()
 
 
@@ -75,9 +73,7 @@ class Backend(QtCore.QObject):
                 self.searchChannelResults.emit(api.sort_by_subscribers(channels))
             elif searchType == "Sort by Views":
                 self.searchChannelResults.emit(api.sort_by_recent_views(channels, time_delta))
-            if len(channels)>=num_channels:
-                break
-        self.searchVideosComplete.emit()
+        self.searchChannelComplete.emit()
         
 
     @typed_signal.TypedSlot
@@ -88,4 +84,4 @@ class Backend(QtCore.QObject):
             self.searchCommentsResults.emit(comments)
             if len(comments)>=num_comments:
                 break
-        self.searchVideosComplete.emit()
+        self.searchCommentsComplete.emit()

@@ -82,7 +82,7 @@ class YouTubeAPI:
     def yield_small_channels(self, niche: str, num_channels: int = 100, time_delta: int = 14, subscriber_range: Tuple[int, int] = (1000, 200000)) -> Iterable[List[Channel]]:
         channel_search = ChannelsSearch(query=niche, language=self.language, region=self.region)
         channels: List[Channel] = []
-        while len(channels) < num_channels:
+        while len(channels) <= num_channels:
             channels_found = self._get_channels_from_search(channel_search, num_channels)
             if not channels_found:
                 break
@@ -124,9 +124,12 @@ class YouTubeAPI:
         unconv_video_time = video.snippet.publishedAt
         if not unconv_video_time:
             return False
-        video_time = datetime.datetime.strptime(unconv_video_time, "%Y-%m-%dT%H:%M:%S%z")
+        elif "T" not in unconv_video_time:
+            return False
+
+        video_time = datetime.datetime.strptime(unconv_video_time.split("T")[0], r"%Y-%m-%d")
         minimum_time = datetime.datetime.now(video_time.tzinfo) - datetime.timedelta(days=time_delta)
-        return bool(video_time > minimum_time)
+        return bool(video_time.date()>minimum_time.date())
 
     @staticmethod
     def getDuration(duration: str) -> float:
@@ -164,9 +167,11 @@ class YouTubeAPI:
         unconv_video_time = video.snippet.publishedAt
         if not unconv_video_time:
             return False
-        video_time = datetime.datetime.strptime(unconv_video_time, "%Y-%m-%dT%H:%M:%S%z")
+        elif "T" not in unconv_video_time:
+            return False
+        video_time = datetime.datetime.strptime(unconv_video_time.split("T")[0], "%Y-%m-%d")
         maximum_time = datetime.datetime.now(video_time.tzinfo) - datetime.timedelta(days=int(time_delta*365))
-        return bool(video_time < maximum_time)
+        return bool(video_time.date() < maximum_time.date())
 
     def _isPushed(self, video: Video) -> Tuple[bool, float]:
         views = video.statistics.viewCount
