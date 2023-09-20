@@ -8,8 +8,7 @@
 # - Scott Jones <scott.jones9336@gmail.com>
 # -----------------------------------------------------------------------------------------------------
 import datetime
-from typing import List, Optional, Tuple
-from black import Iterable
+from typing import List, Optional, Tuple, Iterable
 from pyyoutube import Api, Channel, Video, PlaylistItem, Comment
 from youtubesearchpython import ChannelsSearch, VideosSearch, CustomSearch, VideoSortOrder, Comments
 
